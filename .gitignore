@@ -10,5 +10,5 @@ go.work.sum
 dbinsights-exporter
 coverage.out
 coverage.html
-config.yml
+/config.yml
 /.kiro/

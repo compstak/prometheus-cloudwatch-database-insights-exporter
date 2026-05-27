@@ -1,0 +1,41 @@
+version: 2.1
+
+orbs:
+  aws-ecr: circleci/aws-ecr@9.3.4
+  aws-cli: circleci/aws-cli@5.1.1
+
+_setup:
+  - run: &deploy_vars
+      name: Set environment variables for deployment
+      command: |
+        echo 'export PROJECT_NAME=prometheus-cloudwatch-database-insights-exporter' >> $BASH_ENV
+        if [[ "$CIRCLE_BRANCH" =~ main|master ]]; then
+          BRANCH_TAG="$CIRCLE_BRANCH"
+        else
+          BRANCH_PREFIX=$(echo "$CIRCLE_BRANCH" | head -c 10 | tr -cs '[:alnum:]' '-' | sed 's/^-//;s/-$//')
+          BRANCH_TAG="feature-${BRANCH_PREFIX}"
+        fi
+        echo "export IMAGE_TAG=${BRANCH_TAG}-<<pipeline.number>>" >> $BASH_ENV
+
+workflows:
+  build:
+    jobs:
+      - build-image:
+          context:
+            - aws-deploy
+
+jobs:
+  build-image:
+    docker:
+      - image: cimg/base:current
+    steps:
+      - checkout
+      - setup_remote_docker
+      - aws-cli/setup
+      - run: *deploy_vars
+      - aws-ecr/build_and_push_image:
+          account_id: $AWS_ACCOUNT_ID
+          auth:
+            - aws-cli/setup
+          repo: compstak/prometheus-cloudwatch-database-insights-exporter
+          tag: ${IMAGE_TAG}
